@@ -1,5 +1,7 @@
 # ChatSnipServer
 
+![ChatSnipServer](chat_snip_server.webp)
+
 ## Overview
 
 ChatSnipServer is a Django backend solution for receiving and managing chat posts from the ChatSnip Chrome extension. It allows users to save chat content with unique identifiers, manage code fragments, and avoid duplicate content using checksums.

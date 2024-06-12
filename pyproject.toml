@@ -25,7 +25,9 @@ dependencies = [
     "djangorestframework",
     "django-taggit",
     "django-crispy-forms",
-    "crispy-bootstrap5"
+    "crispy-bootstrap5",
+    "requests",
+    "pillow",
 ]
 
 [project.optional-dependencies]

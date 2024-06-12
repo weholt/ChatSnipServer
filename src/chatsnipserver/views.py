@@ -1,6 +1,4 @@
 import logging
-import time
-
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.http import JsonResponse
@@ -25,6 +23,7 @@ from .services import (
     check_duplicate_code_fragment,
     compose_chat_view,
     compose_source_code_view,
+    download_and_save_image,
     get_or_create_chat,
     get_pretty_date,
     parse_source_code_fragments,
@@ -53,14 +52,9 @@ class ChatViewSet(viewsets.ModelViewSet):
             return Response({"status": "Invalid API key."}, status=status.HTTP_403_FORBIDDEN)
 
         data = request.data
-        logger.debug(f"Received data: {data}")
         identifier = data.get("chatId")
         content = data.get("content")
-
-        with open(f"dump_{int(time.time())}", "w", encoding="utf-8") as f:
-            f.write(content)
-
-        chat_name = data.get("name", get_pretty_date())
+        chat_name = data.get("chatName", get_pretty_date())
 
         if chat := Chat.objects.filter(unique_identifier=identifier, user=profile.user).first():
             if check_duplicate_chat_content(chat, content):
@@ -76,6 +70,11 @@ class ChatViewSet(viewsets.ModelViewSet):
 
         for filename, source_code in parse_source_code_fragments(content):
             save_code_fragment(chat, filename, source_code)
+
+        images = data.get("images", [])
+        for image in images:
+            result = download_and_save_image(chat, image.get("src"), title=None, description=image.get("alt"))
+            print(result)
 
         return Response({"status": "Chat saved."})
 

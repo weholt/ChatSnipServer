@@ -1,3 +1,5 @@
+import hashlib
+import os
 import uuid
 
 from django.contrib.auth import get_user_model
@@ -73,3 +75,42 @@ class ChatSnipProfile(models.Model):
         """Regenerate the API key for the user."""
         self.api_key = uuid.uuid4()
         self.save()
+
+
+def chat_image_upload_to(instance, filename):
+    return os.path.join("chat_images", instance.chat.name, filename)
+
+
+class ChatImage(models.Model):
+    chat = models.ForeignKey(Chat, on_delete=models.CASCADE, related_name="images")
+    source_url = models.CharField(max_length=500)
+    title = models.CharField(max_length=255, blank=True, null=True)
+    description = models.TextField(blank=True, null=True)
+    image = models.ImageField(upload_to=chat_image_upload_to)
+    checksum = models.CharField(max_length=64, blank=True, null=True)
+    blacklisted = models.BooleanField(default=False)
+
+    def __str__(self):
+        return self.title if self.title else "Chat Image"
+
+    def save(self, *args, **kwargs):
+        if self.image and not self.checksum:
+            self.checksum = self.generate_checksum(self.image)
+        super().save(*args, **kwargs)
+
+    @staticmethod
+    def generate_checksum(file):
+        hasher = hashlib.sha256()
+        for chunk in file.chunks():
+            hasher.update(chunk)
+        return hasher.hexdigest()
+
+    @staticmethod
+    def checksum_from_content(content):
+        hasher = hashlib.sha256()
+        hasher.update(content)
+        return hasher.hexdigest()
+
+    @classmethod
+    def exists_with_checksum(cls, chat, checksum):
+        return cls.objects.filter(chat=chat, checksum=checksum).exists()

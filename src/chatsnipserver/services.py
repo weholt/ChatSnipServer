@@ -1,9 +1,15 @@
 import hashlib
+import os
 import re
+import uuid
 from datetime import datetime
-from typing import List, Tuple
+from io import BytesIO
+from typing import IO, List, Tuple
 
-from .models import Chat, CodeFragment
+import requests
+from django.core.files.base import ContentFile
+
+from .models import Chat, ChatImage, CodeFragment
 
 
 def parse_source_code_fragments(content: str) -> List[Tuple[str, str]]:
@@ -251,3 +257,51 @@ def get_pretty_date() -> str:
     """
     now = datetime.now()
     return now.strftime("%A, %B %d, %Y %I:%M %p")
+
+
+def get_unique_filename(filename, file_extension=None):
+    """Generate a unique filename by appending a UUID."""
+    if not file_extension:
+        _, file_extension = os.path.splitext(filename)
+    unique_name = f"{uuid.uuid4().hex}{file_extension}"
+    return unique_name
+
+
+def detect_image_type(file: IO) -> str | None:
+    header = file.read(16)
+    if header.startswith(b"\xff\xd8"):
+        return ".jpg"
+    elif header.startswith(b"\x89PNG\r\n\x1a\n"):
+        return ".png"
+    elif header.startswith(b"GIF87a") or header.startswith(b"GIF89a"):
+        return ".gif"
+    elif header[:4] == b"RIFF" and header[8:12] == b"WEBP":
+        return ".webp"
+    elif header[:4] == b"\x00\x00\x00\x00" and header[4:8] == b"ftyp":
+        if header[8:12] in [b"avif"]:
+            return ".avif"
+
+
+def download_and_save_image(chat, image_url, title=None, description=None) -> dict:
+    if ChatImage.objects.filter(chat=chat, source_url=image_url).exists():
+        return {"status": "Image already exists"}
+
+    if ChatImage.objects.filter(source_url=image_url, blacklisted=True).exists():
+        return {"status": "Image is blacklisted"}
+
+    response = requests.get(image_url)
+    if response.status_code == 200:
+        checksum = ChatImage.checksum_from_content(response.content)
+        if ChatImage.exists_with_checksum(chat, checksum):
+            return {"status": "Image with same checksum already exists"}
+
+        image_name = os.path.basename(image_url)
+        file_extension = detect_image_type(BytesIO(response.content))
+        unique_image_name = get_unique_filename(image_name, file_extension)
+
+        chat_image = ChatImage(chat=chat, source_url=image_url, title=title, description=description)
+
+        chat_image.image.save(unique_image_name, ContentFile(response.content), save=True)
+        return {"status": "Image downloaded", "image": chat_image}
+    else:
+        return {"status": "Failed to download image", "Status code": f"{response.status_code}"}
