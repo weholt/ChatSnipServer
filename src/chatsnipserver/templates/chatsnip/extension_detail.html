@@ -1,0 +1,15 @@
+{% extends "chatsnip/base.html" %}
+{% load static %}
+
+{% block content %}
+<h1>ChatSnip Chrome Extension</h1>
+<p>Download and install the ChatSnip Chrome extension to easily save and manage your chats and code fragments.</p>
+<a href="path_to_chrome_extension.crx" class="btn btn-primary"><i class="fas fa-download"></i> Download Extension</a>
+<h2>Installation Instructions</h2>
+<ol>
+    <li>Download the extension file by clicking the download button above.</li>
+    <li>Open Chrome and navigate to <code>chrome://extensions</code>.</li>
+    <li>Enable "Developer mode" by toggling the switch in the top right corner.</li>
+    <li>Drag and drop the downloaded extension file into the Chrome extensions page.</li>
+</ol>
+{% endblock %}

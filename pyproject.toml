@@ -1,0 +1,37 @@
+[build-system]
+requires = ["setuptools", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.isort]
+profile = "black"
+
+[tool.black]
+line-length = 160
+
+[tool.pytest.ini_options]
+testpaths = [
+    "tests"
+]
+
+[project]
+name = "chatsnipserver"
+version = "0.1.0"
+description = "Backend solution for receiving posts from the ChatSnip Chrome extension."
+authors = [
+    {name = "Thomas Weholt", email = "thomas@weholt.org"}
+]
+dependencies = [
+    "Django>=5.0",
+    "djangorestframework",
+    "django-taggit",
+    "django-crispy-forms",
+    "crispy-bootstrap5"
+]
+
+[project.optional-dependencies]
+dev = [
+    "isort",
+    "black",
+    "pytest",
+    "pytest-django"
+]

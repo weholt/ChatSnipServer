@@ -1,0 +1,14 @@
+{% extends "chatsnip/base.html" %}
+{% load static %}
+
+{% block content %}
+<h1>Code Fragment List</h1>
+<a href="{% url 'chatsnip:codefragment_create' %}" class="btn btn-primary mb-3"><i class="fas fa-plus"></i> Create Code Fragment</a>
+<ul class="list-group">
+    {% for codefragment in code_fragments %}
+    <li class="list-group-item">
+        <a href="{% url 'chatsnip:codefragment_detail' codefragment.pk %}">{{ codefragment.filename }}</a>
+    </li>
+    {% endfor %}
+</ul>
+{% endblock %}

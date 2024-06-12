@@ -1,0 +1,14 @@
+{% extends "chatsnip/base.html" %}
+{% load static %}
+
+{% block content %}
+<h1>Chat List</h1>
+<a href="{% url 'chatsnip:chat_create' %}" class="btn btn-primary mb-3"><i class="fas fa-plus"></i> Create Chat</a>
+<ul class="list-group">
+    {% for chat in chats %}
+    <li class="list-group-item">
+        <a href="{% url 'chatsnip:chat_detail' chat.pk %}">{{ chat.name }}</a>
+    </li>
+    {% endfor %}
+</ul>
+{% endblock %}

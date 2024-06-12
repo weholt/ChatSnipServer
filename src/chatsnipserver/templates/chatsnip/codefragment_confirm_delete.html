@@ -1,0 +1,12 @@
+{% extends "chatsnip/base.html" %}
+{% load static %}
+
+{% block content %}
+<h1>Confirm Delete</h1>
+<p>Are you sure you want to delete "{{ code_fragment.filename }}"?</p>
+<form method="post">
+    {% csrf_token %}
+    <button type="submit" class="btn btn-danger"><i class="fas fa-trash"></i> Delete</button>
+    <a href="{% url 'chatsnip:codefragment_detail' code_fragment.pk %}" class="btn btn-secondary"><i class="fas fa-times"></i> Cancel</a>
+</form>
+{% endblock %}
