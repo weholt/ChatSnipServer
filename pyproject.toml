@@ -28,6 +28,8 @@ dependencies = [
     "crispy-bootstrap5",
     "requests",
     "pillow",
+    "markdown",
+    "pygments",
 ]
 
 [project.optional-dependencies]

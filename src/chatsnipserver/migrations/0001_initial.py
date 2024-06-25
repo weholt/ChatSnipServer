@@ -14,7 +14,10 @@ class Migration(migrations.Migration):
     initial = True
 
     dependencies = [
-        ("taggit", "0006_rename_taggeditem_content_type_object_id_taggit_tagg_content_8fc721_idx"),
+        (
+            "taggit",
+            "0006_rename_taggeditem_content_type_object_id_taggit_tagg_content_8fc721_idx",
+        ),
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
     ]
 
@@ -22,7 +25,15 @@ class Migration(migrations.Migration):
         migrations.CreateModel(
             name="Chat",
             fields=[
-                ("id", models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name="ID")),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
                 ("unique_identifier", models.CharField(max_length=255, unique=True)),
                 ("name", models.CharField(max_length=255)),
                 ("timestamp", models.DateTimeField(auto_now=True)),
@@ -31,10 +42,19 @@ class Migration(migrations.Migration):
                 (
                     "tags",
                     taggit.managers.TaggableManager(
-                        help_text="A comma-separated list of tags.", through="taggit.TaggedItem", to="taggit.Tag", verbose_name="Tags"
+                        help_text="A comma-separated list of tags.",
+                        through="taggit.TaggedItem",
+                        to="taggit.Tag",
+                        verbose_name="Tags",
                     ),
                 ),
-                ("user", models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to=settings.AUTH_USER_MODEL)),
+                (
+                    "user",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        to=settings.AUTH_USER_MODEL,
+                    ),
+                ),
             ],
             options={
                 "verbose_name": "Chat",
@@ -45,22 +65,57 @@ class Migration(migrations.Migration):
         migrations.CreateModel(
             name="ChatSnipProfile",
             fields=[
-                ("id", models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name="ID")),
-                ("api_key", models.CharField(default=uuid.uuid4, max_length=255, unique=True)),
-                ("user", models.OneToOneField(on_delete=django.db.models.deletion.CASCADE, to=settings.AUTH_USER_MODEL)),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                (
+                    "api_key",
+                    models.CharField(default=uuid.uuid4, max_length=255, unique=True),
+                ),
+                (
+                    "user",
+                    models.OneToOneField(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        to=settings.AUTH_USER_MODEL,
+                    ),
+                ),
             ],
         ),
         migrations.CreateModel(
             name="CodeFragment",
             fields=[
-                ("id", models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name="ID")),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
                 ("filename", models.CharField(blank=True, max_length=255, null=True)),
-                ("programming_language", models.CharField(blank=True, max_length=50, null=True)),
+                (
+                    "programming_language",
+                    models.CharField(blank=True, max_length=50, null=True),
+                ),
                 ("timestamp", models.DateTimeField(default=django.utils.timezone.now)),
                 ("source_code", models.TextField()),
                 ("checksum", models.CharField(max_length=64)),
                 ("selected", models.BooleanField(default=False)),
-                ("chat", models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name="code_fragments", to="chatsnipserver.chat")),
+                (
+                    "chat",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="code_fragments",
+                        to="chatsnipserver.chat",
+                    ),
+                ),
             ],
             options={
                 "verbose_name": "Code Fragment",

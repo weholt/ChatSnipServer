@@ -1,11 +1,14 @@
 from django.contrib import admin
 from django.utils.html import mark_safe
+from .forms import ChatForm
 
 from .models import Chat, ChatImage, ChatSnipProfile, CodeFragment
 
 
+
 @admin.register(Chat)
 class ChatAdmin(admin.ModelAdmin):
+    form = ChatForm
     list_display = ("name", "unique_identifier", "user", "timestamp", "checksum")
     search_fields = ("name", "unique_identifier", "user__username", "content")
     list_filter = ("timestamp", "tags", "user")
@@ -14,7 +17,14 @@ class ChatAdmin(admin.ModelAdmin):
 
 @admin.register(CodeFragment)
 class CodeFragmentAdmin(admin.ModelAdmin):
-    list_display = ("filename", "programming_language", "chat", "timestamp", "checksum", "selected")
+    list_display = (
+        "filename",
+        "programming_language",
+        "chat",
+        "timestamp",
+        "checksum",
+        "selected",
+    )
     search_fields = ("filename", "programming_language", "chat__name", "source_code")
     list_filter = ("timestamp", "programming_language", "chat", "selected")
     readonly_fields = ("checksum", "timestamp")

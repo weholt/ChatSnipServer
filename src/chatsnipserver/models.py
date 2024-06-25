@@ -1,3 +1,4 @@
+import json
 import hashlib
 import os
 import uuid
@@ -16,10 +17,17 @@ class Chat(models.Model):
     unique_identifier = models.CharField(max_length=255, unique=True)
     name = models.CharField(max_length=255)
     timestamp = models.DateTimeField(auto_now=True)
-    tags = TaggableManager()
-    content = models.TextField()
+    tags = TaggableManager(blank=True)
+    json_data = models.JSONField(null=True, blank=True)
+    markdown = models.TextField(null=True, blank=True)
     checksum = models.CharField(max_length=64)
-    user = models.ForeignKey(get_user_model(), on_delete=models.CASCADE, related_name="chats")
+    images_downloaded = models.BooleanField(default=False)
+    chatbot = models.CharField(max_length=100, null=True, blank=True)
+    llm_model = models.CharField(max_length=100, null=True, blank=True)
+
+    user = models.ForeignKey(
+        get_user_model(), on_delete=models.CASCADE, related_name="chats"
+    )
 
     class Meta:
         verbose_name = "Chat"
@@ -30,7 +38,7 @@ class Chat(models.Model):
         """Generate checksum and save the chat."""
         from .services import generate_checksum
 
-        self.checksum = generate_checksum(self.content)
+        self.checksum = generate_checksum(json.dumps(self.json_data))
         super().save(*args, **kwargs)
 
     def __str__(self):
@@ -40,7 +48,9 @@ class Chat(models.Model):
 class CodeFragment(models.Model):
     """Model representing a code fragment within a chat."""
 
-    chat = models.ForeignKey(Chat, on_delete=models.CASCADE, related_name="code_fragments")
+    chat = models.ForeignKey(
+        Chat, on_delete=models.CASCADE, related_name="code_fragments"
+    )
     filename = models.CharField(max_length=255, null=True, blank=True)
     programming_language = models.CharField(max_length=50, null=True, blank=True)
     timestamp = models.DateTimeField(default=timezone.now)
@@ -57,7 +67,9 @@ class CodeFragment(models.Model):
         """Clean content, generate checksum and save the code fragment."""
         from .services import clean_content, generate_checksum
 
-        self.source_code = clean_content(self.source_code, self.chat, self.filename, self.programming_language)
+        self.source_code = clean_content(
+            self.source_code, self.chat, self.filename, self.programming_language
+        )
         self.checksum = generate_checksum(self.source_code)
         super().save(*args, **kwargs)
 

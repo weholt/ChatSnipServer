@@ -1,0 +1,126 @@
+{
+    "Python": {
+        "views": [
+            "from\\s+django\\.views\\s+import",
+            "from\\s+django\\.shortcuts\\s+import\\s+render",
+            "def\\s+.*_view\\s*\\(.*\\):"
+        ],
+        "urls": [
+            "from\\s+django\\.urls\\s+import\\s+path",
+            "urlpatterns\\s*=\\s*\\["
+        ],
+        "admin": [
+            "from\\s+django\\.contrib\\s+import\\s+admin",
+            "admin\\.site\\.register"
+        ],
+        "settings": [
+            "from\\s+.*\\s+import\\s+settings",
+            "INSTALLED_APPS\\s*=\\s*\\["
+        ],
+        "api": [
+            "from\\s+rest_framework\\s+import\\s+viewsets",
+            "class\\s+.*ViewSet\\s*\\(viewsets\\."
+        ],
+        "fastapi": [
+            "from\\s+fastapi\\s+import",
+            "app\\s*=\\s*FastAPI\\(\\)"
+        ],
+        "flask": [
+            "from\\s+flask\\s+import",
+            "app\\s*=\\s*Flask\\(\\)"
+        ],
+        "pydantic": [
+            "from\\s+pydantic\\s+import",
+            "class\\s+.*\\(BaseModel\\):"
+        ],
+        "requests": [
+            "import\\s+requests",
+            "requests\\.(get|post|put|delete|patch)"
+        ],
+        "setup": [
+            "from\\s+setuptools\\s+import\\s+setup",
+            "setup\\s*\\("
+        ],
+        "pyproject.toml": [
+            "^\\[tool.poetry\\]",
+            "^\\[build-system\\]",
+            "^\\[tool.black\\]",
+            "^\\[tool.isort\\]",
+            "^\\[tool.mypy\\]",
+            "^\\[tool.pylint\\]",
+            "^\\[tool.coverage\\]",
+            "^\\[tool.pytest\\]",
+            "^\\[tool.safety\\]",
+            "^\\[tool.pyupgrade\\]"
+        ]
+    },
+    "HTML": {
+        "default": [
+            "<!DOCTYPE html>",
+            "<html>",
+            "<head>",
+            "<title>.*<\\/title>",
+            "<body>"
+        ]
+    },
+    "CSS": {
+        "default": [
+            "body\\s*\\{",
+            "#\\w+\\s*\\{",
+            "\\.\\w+\\s*\\{",
+            "@media\\s+.*\\{"
+        ]
+    },
+    "JavaScript": {
+        "default": [
+            "^\\s*function\\s+.*\\(.*\\)\\s*\\{",
+            "^\\s*const\\s+.*\\s*=\\s*.*;",
+            "^\\s*let\\s+.*\\s*=\\s*.*;",
+            "^\\s*var\\s+.*\\s*=\\s*.*;",
+            "^\\s*console\\.log\\(.*\\);",
+            "^\\s*document\\.getElementById\\(.*\\);",
+            "^\\s*window\\.addEventListener\\(.*\\);",
+            "^\\s*new\\s+Promise\\(.*\\);",
+            "^\\s*export\\s+default\\s+.*;",
+            "^\\s*import\\s+.*\\s+from\\s+['\"].*['\"];"
+        ],
+        "react": [
+            "import\\s+React\\s+from\\s+['\"]react['\"];",
+            "const\\s+.*\\s*=\\s*\\(\\)\\s*=>\\s*\\{",
+            "return\\s*\\(",
+            "ReactDOM\\.render\\("
+        ],
+        "vue": [
+            "<template>",
+            "<script>",
+            "<style>",
+            "export\\s+default\\s+\\{"
+        ]
+    },
+    "Docker": {
+        "dockerfile": [
+            "^\\s*FROM\\s+.*",
+            "^\\s*RUN\\s+.*",
+            "^\\s*CMD\\s+.*",
+            "^\\s*ENTRYPOINT\\s+.*",
+            "^\\s*COPY\\s+.*",
+            "^\\s*ADD\\s+.*",
+            "^\\s*EXPOSE\\s+.*",
+            "^\\s*VOLUME\\s+.*",
+            "^\\s*ENV\\s+.*",
+            "^\\s*WORKDIR\\s+.*"
+        ],
+        "docker-compose": [
+            "^\\s*version:\\s*['\"].*['\"]",
+            "^\\s*services:",
+            "^\\s*build:",
+            "^\\s*image:",
+            "^\\s*volumes:",
+            "^\\s*networks:",
+            "^\\s*depends_on:",
+            "^\\s*environment:",
+            "^\\s*ports:",
+            "^\\s*command:"
+        ]
+    }
+}

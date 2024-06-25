@@ -1,8 +1,10 @@
+import json
 import logging
+
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.http import JsonResponse
-from django.shortcuts import redirect
+from django.shortcuts import redirect, get_object_or_404
 from django.urls import reverse_lazy
 from django.views.generic import (
     CreateView,
@@ -14,6 +16,7 @@ from django.views.generic import (
 )
 from rest_framework import status, viewsets
 from rest_framework.response import Response
+from pygments.formatters import HtmlFormatter
 
 from .forms import ChatSnipProfileForm
 from .models import Chat, ChatSnipProfile, CodeFragment
@@ -31,7 +34,8 @@ from .services import (
 )
 
 logger = logging.getLogger(__name__)
-
+formatter = HtmlFormatter(style='colorful')
+pygments_css = formatter.get_style_defs('.highlight')
 
 class ChatViewSet(viewsets.ModelViewSet):
     """API endpoint for Chat."""
@@ -44,39 +48,77 @@ class ChatViewSet(viewsets.ModelViewSet):
         logger.debug(f"Received API Key: {api_key}")
         if not api_key:
             logger.debug("API key missing.")
-            return Response({"status": "API key missing."}, status=status.HTTP_400_BAD_REQUEST)
+            return Response(
+                {"status": "API key missing."}, status=status.HTTP_400_BAD_REQUEST
+            )
         try:
             profile = ChatSnipProfile.objects.get(api_key=api_key)
         except ChatSnipProfile.DoesNotExist:
             logger.debug("Invalid API key.")
-            return Response({"status": "Invalid API key."}, status=status.HTTP_403_FORBIDDEN)
+            return Response(
+                {"status": "Invalid API key."}, status=status.HTTP_403_FORBIDDEN
+            )
 
         data = request.data
         identifier = data.get("chatId")
-        content = data.get("content")
+        json_data = data.get("content")
+        markdown = data.get('markdown', "")
         chat_name = data.get("chatName", get_pretty_date())
+        images = [element for element in json_data if "src" in element]        
+        code_samples = [element for element in json_data if "language" in element]
+        saved = []
+        unchanged = []
+        import pprint
+        pprint.pprint(json_data)
 
-        if chat := Chat.objects.filter(unique_identifier=identifier, user=profile.user).first():
-            if check_duplicate_chat_content(chat, content):
+        if chat := Chat.objects.filter(
+            unique_identifier=identifier, user=profile.user
+        ).first():
+            if check_duplicate_chat_content(chat, json.dumps(json_data)) and chat.images_downloaded:
                 logger.debug("Duplicate chat content.")
-                return Response({"status": "Duplicate content."}, status=status.HTTP_208_ALREADY_REPORTED)
+                return Response(
+                    {"status": "Duplicate content."},
+                    status=status.HTTP_208_ALREADY_REPORTED,
+                )
         else:
             chat = get_or_create_chat(identifier, chat_name, profile.user)
-            chat.content = content
+            chat.markdown = markdown
+            chat.json_data = json_data
+            if not images:
+                chat.images_downloaded = True
+            saved.append('chat')
             chat.save()
 
-        # import pprint
-        # pprint.pprint(parse_source_code_fragments(content)[0])
+        if images:
+            image_source_replacement = {}
+            for image in images:
+                result = download_and_save_image(
+                    chat, image.get("src"), title=None, description=image.get("content")
+                )
+                if not result.get('status') and result.get("status_code", 200) == 403:
+                    return Response({"status": "Chat saved, but images could not be downloaded. Refresh page and try again."})
 
-        for filename, source_code in parse_source_code_fragments(content):
-            save_code_fragment(chat, filename, source_code)
+                if "image" in result:
+                    image_source_replacement[image.get("src")] = result.get('image').image.url
 
-        images = data.get("images", [])
-        for image in images:
-            result = download_and_save_image(chat, image.get("src"), title=None, description=image.get("alt"))
-            print(result)
+            saved.append('images')
+                            
+            if image_source_replacement:
+                for original_source, new_source in image_source_replacement.items():
+                    chat.markdown = chat.markdown.replace(original_source, new_source)
+                    chat.json_data = json.loads(json.dumps(chat.json_data).replace(original_source, new_source))
+                chat.save()
 
-        return Response({"status": "Chat saved."})
+            if not chat.images_downloaded:
+                chat.images_downloaded = True
+                chat.save()
+            
+        for code_sample in code_samples:
+            if save_code_fragment(chat, filename=code_sample.get("filename"), content=code_sample.get("content"), language=code_sample.get("language")):
+                if not 'code' in saved:
+                    saved.append('code')
+
+        return Response({"status": f"Process done. Saved {' & '.join(saved)}."})
 
 
 class CodeFragmentViewSet(viewsets.ModelViewSet):
@@ -90,20 +132,33 @@ class CodeFragmentViewSet(viewsets.ModelViewSet):
         logger.debug(f"Received API Key: {api_key}")
         if not api_key:
             logger.debug("API key missing.")
-            return Response({"status": "API key missing."}, status=status.HTTP_400_BAD_REQUEST)
+            return Response(
+                {"status": "API key missing."}, status=status.HTTP_400_BAD_REQUEST
+            )
         try:
             profile = ChatSnipProfile.objects.get(api_key=api_key)
         except ChatSnipProfile.DoesNotExist:
             logger.debug("Invalid API key.")
-            return Response({"status": "Invalid API key."}, status=status.HTTP_403_FORBIDDEN)
+            return Response(
+                {"status": "Invalid API key."}, status=status.HTTP_403_FORBIDDEN
+            )
 
         data = request.data
         logger.debug(f"Received data: {data}")
         chat = Chat.objects.get(id=data.get("chat_id"))
-        if check_duplicate_code_fragment(chat, data.get("filename"), data.get("source_code")):
+        if check_duplicate_code_fragment(
+            chat, data.get("source_code"), data.get("filename")
+        ):
             logger.debug("Duplicate code fragment content.")
-            return Response({"status": "Duplicate content."}, status=status.HTTP_400_BAD_REQUEST)
-        code_fragment = save_code_fragment(chat, data.get("filename"), data.get("source_code"), data.get("programming_language"))
+            return Response(
+                {"status": "Duplicate content."}, status=status.HTTP_400_BAD_REQUEST
+            )
+        code_fragment = save_code_fragment(
+            chat,
+            data.get("filename"),
+            data.get("source_code"),
+            data.get("programming_language"),
+        )
         return Response({"status": "Code fragment saved."})
 
 
@@ -124,7 +179,8 @@ class ChatDetailView(LoginRequiredMixin, DetailView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context.update(compose_chat_view(self.object))
+        context.update(compose_chat_view(self.object))        
+        context["pygments_css"] = pygments_css
         return context
 
 
@@ -138,7 +194,9 @@ class ChatCreateView(LoginRequiredMixin, CreateView):
 
     def form_valid(self, form):
         form.instance.user = self.request.user
-        if check_duplicate_chat_content(form.instance.unique_identifier, form.instance.content):
+        if check_duplicate_chat_content(
+            form.instance.unique_identifier, form.instance.content
+        ):
             return JsonResponse({"status": "Duplicate content."}, status=400)
         form.save()
         return JsonResponse({"status": "Chat saved."})
@@ -186,7 +244,9 @@ class CodeFragmentCreateView(LoginRequiredMixin, CreateView):
     success_url = reverse_lazy("chatsnip:codefragment_list")
 
     def form_valid(self, form):
-        if check_duplicate_code_fragment(form.instance.chat, form.instance.filename, form.instance.source_code):
+        if check_duplicate_code_fragment(
+            form.instance.chat, form.instance.filename, form.instance.source_code
+        ):
             return JsonResponse({"status": "Duplicate content."}, status=400)
         form.save()
         return JsonResponse({"status": "Code fragment saved."})
@@ -236,3 +296,12 @@ class ChatSnipProfileUpdateView(LoginRequiredMixin, UpdateView):
     def form_valid(self, form):
         form.instance.user = self.request.user
         return super().form_valid(form)
+
+@login_required
+def delete_fragment(request):
+    fragment_id = request.POST.get("fragment_id")
+    if not fragment_id:
+        return JsonResponse({"status": False, "message": "No fragment ID provided."})
+    code_fragment = get_object_or_404(CodeFragment, pk=fragment_id)
+    code_fragment.delete()
+    return JsonResponse({"status": True, "message": "Code fragment deleted."})

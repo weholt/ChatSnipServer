@@ -1,3 +1,4 @@
+import time
 import hashlib
 import os
 import re
@@ -5,6 +6,10 @@ import uuid
 from datetime import datetime
 from io import BytesIO
 from typing import IO, List, Tuple
+import json
+import re
+from typing import Optional, Dict
+
 
 import requests
 from django.core.files.base import ContentFile
@@ -34,7 +39,9 @@ def parse_source_code_fragments(content: str) -> List[Tuple[str, str]]:
     fragments.extend(re.findall(template_pattern, content))
 
     # Method 2: 'Copy code' markers
-    copy_code_pattern = re.compile(r"Copy code\n# filename: (.+?)\n(.*?)\n# endof", re.DOTALL)
+    copy_code_pattern = re.compile(
+        r"Copy code\n# filename: (.+?)\n(.*?)\n# endof", re.DOTALL
+    )
     fragments.extend(re.findall(copy_code_pattern, content))
 
     # Method 3: Triple backticks for code blocks
@@ -51,12 +58,22 @@ def parse_source_code_fragments(content: str) -> List[Tuple[str, str]]:
 
     # Method 4: Markdown fenced code blocks
     markdown_fenced_pattern = re.compile(r"```[\w]*\n(.*?)```", re.DOTALL)
-    fragments.extend([(None, match.strip()) for match in re.findall(markdown_fenced_pattern, content)])
+    fragments.extend(
+        [
+            (None, match.strip())
+            for match in re.findall(markdown_fenced_pattern, content)
+        ]
+    )
 
     return fragments
 
 
-def clean_content(code: str, chat: Chat, filename: str | None = "", programming_language: str | None = "") -> str:
+def clean_content(
+    code: str,
+    chat: Chat,
+    filename: str | None = "",
+    programming_language: str | None = "",
+) -> str:
     """Cleans the content of the source code by removing unnecessary lines.
 
     This function removes lines containing `# filename:` and `# endof`, and ensures
@@ -69,18 +86,27 @@ def clean_content(code: str, chat: Chat, filename: str | None = "", programming_
         str: The cleaned source code.
     """
     lines = code.split("\n")
-    cleaned_lines = [line for line in lines if not (line.startswith("# filename:") or line.startswith("# endof"))]
+    cleaned_lines = [
+        line
+        for line in lines
+        if not (line.startswith("# filename:") or line.startswith("# endof"))
+    ]
 
+    if not cleaned_lines:
+        return ""
+    
     # Ensure triple backticks are not the first or last lines
     if cleaned_lines[0].strip() == "```":
         cleaned_lines = cleaned_lines[1:]
-    if cleaned_lines[-1].strip() == "```":
+    if cleaned_lines and cleaned_lines[-1].strip() == "```":
         cleaned_lines = cleaned_lines[:-1]
 
     return "\n".join(cleaned_lines)
 
 
-def has_duplicate_checksum(existing_fragments: List[Tuple[str, str]], new_fragment: Tuple[str, str]) -> bool:
+def has_duplicate_checksum(
+    existing_fragments: List[Tuple[str, str]], new_fragment: Tuple[str, str]
+) -> bool:
     """Checks if a new fragment has a duplicate checksum in the existing fragments.
 
     Args:
@@ -137,14 +163,18 @@ def get_or_create_chat(identifier: str, name: str, user) -> Chat:
     Returns:
         Chat: The retrieved or newly created chat.
     """
-    chat, created = Chat.objects.get_or_create(unique_identifier=identifier, defaults={"name": name, "user": user})
+    chat, created = Chat.objects.get_or_create(
+        unique_identifier=identifier, defaults={"name": name, "user": user}
+    )
     if not created:
         chat.name = name
         chat.save()
     return chat
 
 
-def save_code_fragment(chat: Chat, filename: str, content: str, language: str = "") -> CodeFragment | None:
+def save_code_fragment(
+    chat: Chat, filename: str, content: str, language: str = ""
+) -> CodeFragment | None:
     """
     Save a code fragment associated with a chat.
 
@@ -157,12 +187,36 @@ def save_code_fragment(chat: Chat, filename: str, content: str, language: str = 
     Returns:
         CodeFragment: The saved code fragment.
     """
-    if check_duplicate_code_fragment(chat, filename, content):
+    if check_duplicate_code_fragment(chat, content, filename):
         return
 
     if not language:
         language = identify_language(content)
-    code_fragment = CodeFragment(chat=chat, filename=filename, programming_language=language, source_code=content)
+
+    language_file_extension_mapping = {
+        "python": ".py",
+        "javascript": ".js",
+        "java": ".java",
+        "c++": ".cpp",
+        "c#": ".cs",
+        "kotlin": ".kt",
+        "go": ".go",
+        "rust": ".rs",
+        "php": ".php",
+        "swift": ".swift",
+        "c": ".c",
+        'json': '.json',
+        'html': '.html',
+        'css': '.css',
+        'xml': '.xml',
+    }
+
+    if not filename:
+        filename = f"untitled_{int(time.time())}{language_file_extension_mapping.get(language)}"
+
+    code_fragment = CodeFragment(
+        chat=chat, filename=filename, programming_language=language, source_code=content
+    )
     code_fragment.save()
     return code_fragment
 
@@ -184,7 +238,10 @@ def compose_chat_view(chat: Chat) -> dict:
             grouped_fragments[fragment.filename] = []
         grouped_fragments[fragment.filename].append(fragment)
 
-    selected_fragments = {filename: max(group, key=lambda x: x.selected or x.timestamp) for filename, group in grouped_fragments.items()}
+    selected_fragments = {
+        filename: max(group, key=lambda x: x.selected or x.timestamp)
+        for filename, group in grouped_fragments.items()
+    }
     return {"chat": chat, "selected_fragments": selected_fragments}
 
 
@@ -222,7 +279,7 @@ def check_duplicate_chat_content(chat: Chat, new_content: str) -> bool:
     return chat.checksum == new_checksum
 
 
-def check_duplicate_code_fragment(chat: Chat, filename: str, new_content: str) -> bool:
+def check_duplicate_code_fragment(chat: Chat, new_content: str, filename: str | None = None ) -> bool:
     """
     Check if the new content is a duplicate of an existing code fragment within the chat.
 
@@ -234,8 +291,8 @@ def check_duplicate_code_fragment(chat: Chat, filename: str, new_content: str) -
     Returns:
         bool: True if the content is a duplicate, False otherwise.
     """
-    new_checksum = generate_checksum(new_content)
-    existing_fragments = chat.code_fragments.filter(filename=filename)
+    new_checksum = generate_checksum(new_content)    
+    existing_fragments = filename and chat.code_fragments.filter(filename=filename) or chat.code_fragments.all()
     for fragment in existing_fragments:
         if fragment.checksum == new_checksum:
             return True
@@ -284,24 +341,86 @@ def detect_image_type(file: IO) -> str | None:
 
 def download_and_save_image(chat, image_url, title=None, description=None) -> dict:
     if ChatImage.objects.filter(chat=chat, source_url=image_url).exists():
-        return {"status": "Image already exists"}
+        return {"status": False, "message": "Image already exists", }
 
     if ChatImage.objects.filter(source_url=image_url, blacklisted=True).exists():
-        return {"status": "Image is blacklisted"}
+        return {"status": False, "message": "Image is blacklisted"}
 
     response = requests.get(image_url)
     if response.status_code == 200:
         checksum = ChatImage.checksum_from_content(response.content)
         if ChatImage.exists_with_checksum(chat, checksum):
-            return {"status": "Image with same checksum already exists"}
+            return {"status": False, "message": "Image with same checksum already exists"}
 
         image_name = os.path.basename(image_url)
         file_extension = detect_image_type(BytesIO(response.content))
         unique_image_name = get_unique_filename(image_name, file_extension)
 
-        chat_image = ChatImage(chat=chat, source_url=image_url, title=title, description=description)
+        chat_image = ChatImage(
+            chat=chat, source_url=image_url, title=title, description=description
+        )
 
-        chat_image.image.save(unique_image_name, ContentFile(response.content), save=True)
-        return {"status": "Image downloaded", "image": chat_image}
+        chat_image.image.save(
+            unique_image_name, ContentFile(response.content), save=True
+        )
+        return {"status": True, "message": "Image downloaded", "image": chat_image}
     else:
-        return {"status": "Failed to download image", "Status code": f"{response.status_code}"}
+        return {
+            "status": False, "message": "Failed to download image",
+            "Status code": f"{response.status_code}",
+        }
+
+def detect_language(json_file: str, source_code: str) -> Optional[str]:
+    """Detect the programming language of a given source code.
+
+    Args:
+        json_file (str): Path to the JSON file containing regex patterns for different languages.
+        source_code (str): The source code to be analyzed.
+
+    Returns:
+        Optional[str]: The detected programming language, or None if no match is found.
+    """
+    with open(json_file, 'r') as file:
+        patterns = json.load(file)
+        
+    max_score = 0
+    best_match = None
+
+    for language, regex_patterns in patterns.items():
+        score = 0
+        for pattern in regex_patterns:
+            if re.search(pattern, source_code, re.MULTILINE):
+                score += 1
+        match_percentage = score / len(regex_patterns)
+        if match_percentage > max_score:
+            max_score = match_percentage
+            best_match = language
+    
+    return best_match
+
+def calculate_match_percentages(json_file: str, source_code: str) -> Dict[str, float]:
+    """Calculate weighted match percentages for each programming language.
+
+    Args:
+        json_file (str): Path to the JSON file containing regex patterns for different languages.
+        source_code (str): The source code to be analyzed.
+
+    Returns:
+        Dict[str, float]: A dictionary with programming languages as keys and weighted match percentages as values.
+    """
+    with open(json_file, 'r') as file:
+        patterns = json.load(file)
+
+    match_percentages = {}
+
+    total_patterns = sum(len(regex_patterns) for regex_patterns in patterns.values())
+
+    for language, regex_patterns in patterns.items():
+        score = 0
+        for pattern in regex_patterns:
+            if re.search(pattern, source_code, re.MULTILINE):
+                score += 1
+        match_percentage = (score / len(regex_patterns)) * (len(regex_patterns) / total_patterns)
+        match_percentages[language] = match_percentage
+    
+    return match_percentages

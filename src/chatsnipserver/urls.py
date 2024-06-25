@@ -16,12 +16,40 @@ urlpatterns = [
     path("chat/<int:pk>/", views.ChatDetailView.as_view(), name="chat_detail"),
     path("chat/<int:pk>/update/", views.ChatUpdateView.as_view(), name="chat_update"),
     path("chat/<int:pk>/delete/", views.ChatDeleteView.as_view(), name="chat_delete"),
-    path("codefragment/", views.CodeFragmentListView.as_view(), name="codefragment_list"),
-    path("codefragment/create/", views.CodeFragmentCreateView.as_view(), name="codefragment_create"),
-    path("codefragment/<int:pk>/", views.CodeFragmentDetailView.as_view(), name="codefragment_detail"),
-    path("codefragment/<int:pk>/update/", views.CodeFragmentUpdateView.as_view(), name="codefragment_update"),
-    path("codefragment/<int:pk>/delete/", views.CodeFragmentDeleteView.as_view(), name="codefragment_delete"),
+    path(
+        "codefragment/", views.CodeFragmentListView.as_view(), name="codefragment_list"
+    ),
+    path(
+        "codefragment/create/",
+        views.CodeFragmentCreateView.as_view(),
+        name="codefragment_create",
+    ),
+    path(
+        "codefragment/<int:pk>/",
+        views.CodeFragmentDetailView.as_view(),
+        name="codefragment_detail",
+    ),
+    path(
+        "codefragment/<int:pk>/update/",
+        views.CodeFragmentUpdateView.as_view(),
+        name="codefragment_update",
+    ),
+    path(
+        "codefragment/<int:pk>/delete/",
+        views.CodeFragmentDeleteView.as_view(),
+        name="codefragment_delete",
+    ),
     path("extension/", views.ExtensionDetailView.as_view(), name="extension_detail"),
     path("profile/", views.ChatSnipProfileUpdateView.as_view(), name="profile"),
-    path("profile/regenerate-api-key/", views.regenerate_api_key, name="regenerate_api_key"),
+    path(
+        "profile/regenerate-api-key/",
+        views.regenerate_api_key,
+        name="regenerate_api_key",
+    ),
+    path(
+        "fragment/delete/",
+        views.delete_fragment,
+        name="fragment_delete",
+    ),
+
 ]
